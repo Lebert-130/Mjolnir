@@ -11,8 +11,6 @@ At this moment, it's at its prototype stages, or at alpha version, so it is very
 
 ## Some building information
 
-At the moment, you need Visual C++ 6.0, yes I know, it's too old, it's because my game engine will support pretty old versions of Windows, starting from Windows 98, so I made
-everything use Visual C++ 6.0. But that's alright, I have no problem modernizing this tool just for the others who want to use this tool. I have plans to bring this tool to much more modern versions of Visual Studio. Once that's done, I will just remove the VC++ 6.0 project, since I am pretty sure once it gets modernized, it's going to use much more
-modern standards of C++, and VC++ 6.0 doesn't support anything above C++98.
+You need Visual Studio 2013 to be able to build this program. The project is inside the VS2013 folder, the wxWidgets 2.8.6 libs are included in the project, you just have to grab the include headers from somewhere else.
 
-The wxWidgets version that this tool uses is wxWidgets 2.8.6, I have included the libraries inside because I know that compiling this widget toolkit can be a bit difficult, all you have to do is get the headers from somewhere. I might upgrade wxWidgets once I bring the tool to much more modern versions of Visual Studio.
+I might upgrade wxWidgets one day.

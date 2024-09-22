@@ -173,7 +173,7 @@ MapDoc::MapDoc(wxMDIParentFrame* parent, const wxString& title)
 
 	timer = new wxTimer(this, 1337);
 	resetTimer = new wxTimer(this, 1338);
-	timer->Start(100);
+	timer->Start(50);
 
 	wxSplitterWindow *mainSplitter = new wxSplitterWindow(this);
 	m_leftSplitter = new wxSplitterWindow(mainSplitter);
@@ -245,7 +245,7 @@ void MapDoc::OnTimer(wxTimerEvent& event)
 			glCanvasSide->Refresh();
 			enterKeyHandled = true;
 
-			resetTimer->Start(200, wxTIMER_ONE_SHOT);
+			resetTimer->Start(100, wxTIMER_ONE_SHOT);
 		}
 	}
 }

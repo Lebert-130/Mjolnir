@@ -16,7 +16,8 @@
 #include <wx/aui/aui.h>
 #include <wx/bookctrl.h>
 #include <wx/propdlg.h>
-#include <GL/glaux.h>
+#include <GL/gl.h>
+#include <GL/GLU.h>
 
 #include "mjolnir.h"
 #include "camera.h"
@@ -119,7 +120,7 @@ void RenderObjects()
 		glPopMatrix();
 	}
 
-	for(i = 0; i < brushes.size(); i++){
+	for(int i = 0; i < brushes.size(); i++){
 		Brush brush = brushes[i];
 
 		glPushMatrix();
