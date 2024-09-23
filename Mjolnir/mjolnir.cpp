@@ -22,6 +22,7 @@ CFgd testFGD;
 wxToolBar* tbar;
 wxChoice* entityChoice;
 MapFrame* frame;
+wxMenuBar* menuBar;
 
 IMPLEMENT_APP(MjolnirApp)
 
@@ -35,7 +36,7 @@ AboutDialog::AboutDialog(wxWindow* parent)
 	wxStaticBitmap* iconBitmapCtrl = new wxStaticBitmap(panel, wxID_ANY, mappingIcon);
 	sizer->Add(iconBitmapCtrl, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 10);
 
-	wxStaticText* aboutText = new wxStaticText(panel, wxID_ANY, wxT("Mjolnir map editor made by Bernard (Lebert) © 2021-2024\nIcons by: J. Flames.\n\nVersion 1.0"));
+	wxStaticText* aboutText = new wxStaticText(panel, wxID_ANY, wxT("Mjolnir map editor made by Lebert © 2021-2024\nIcons by: J. Flames.\n\nVersion 1.0"));
 	sizer->Add(aboutText, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 10);
 
 	wxButton* okButton = new wxButton(panel, wxID_OK, wxT("OK"));
@@ -68,7 +69,7 @@ MapFrame::MapFrame(const wxString& title)
 
 	objectPanel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
 	wxArrayString entityChoices;
-	testFGD.FGDToList(entityChoices);
+	testFGD.FGDToList(entityChoices, true);
 	entityChoice = new wxChoice(objectPanel, wxID_ANY, wxDefaultPosition, wxSize(100,-1), entityChoices);
 	entityChoice->Select(0);
 
@@ -96,7 +97,7 @@ MapFrame::MapFrame(const wxString& title)
 	wxMenu* helpMenu = new wxMenu();
 	helpMenu->Append(wxID_ABOUT, "&About\tF1", "Show about dialog");
 
-	wxMenuBar* menuBar = new wxMenuBar();
+	menuBar = new wxMenuBar();
 	menuBar->Append(fileMenu, "&File");
 	menuBar->Append(toolsMenu, "&Tools");
 	menuBar->Append(helpMenu, "&Help");
@@ -140,6 +141,7 @@ BEGIN_EVENT_TABLE(MapFrame, wxMDIParentFrame)
 	EVT_MENU(ID_Options, MapFrame::OnOptions)
 	EVT_MENU(wxID_EXIT, MapFrame::OnExit)
 	EVT_MENU(wxID_ABOUT, MapFrame::OnAbout)
+	EVT_MENU(ID_Map, MapFrame::OnMap)
 END_EVENT_TABLE()
 
 void MapFrame::OnNew(wxCommandEvent& WXUNUSED(event))
@@ -166,9 +168,21 @@ void MapFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 	aboutDialog.ShowModal();
 }
 
+void MapFrame::OnMap(wxCommandEvent& WXUNUSED(event))
+{
+	ObjectPropertiesSheetDialog* dlg = new ObjectPropertiesSheetDialog(NULL);
+	dlg->ShowModal();
+	dlg->Destroy();
+}
+
 MapDoc::MapDoc(wxMDIParentFrame* parent, const wxString& title)
 : wxMDIChildFrame(parent, wxID_ANY, title)
 {
+	wxMenu* mapMenu = new wxMenu();
+	mapMenu->Append(ID_Map, "Map Properties...");
+
+	menuBar->Append(mapMenu, "&Map");
+
 	enterKeyHandled = false;
 
 	timer = new wxTimer(this, 1337);
@@ -305,6 +319,50 @@ OptionsPropertySheetDialog::OptionsPropertySheetDialog(wxWindow* parent)
 	wxBoxSizer* sizer3D = new wxBoxSizer(wxVERTICAL);
 	sizer3D->Add(new wxStaticText(page3D, wxID_ANY, "3D Settings"));
 	page3D->SetSizer(sizer3D);
+
+	LayoutDialog();
+}
+
+ObjectPropertiesSheetDialog::ObjectPropertiesSheetDialog(wxWindow* parent)
+{
+	Create(parent, wxID_ANY, "Object Properties",
+		wxDefaultPosition, wxDefaultSize,
+		wxDEFAULT_DIALOG_STYLE);
+
+	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+
+	wxBookCtrlBase* bookCtrl = GetBookCtrl();
+
+	wxPanel* objectPage = new wxPanel(bookCtrl);
+
+	bookCtrl->AddPage(objectPage, "Class Info", true);
+
+	wxStaticText* classText = new wxStaticText(objectPage, wxID_ANY, "Class:");
+	sizer->Add(classText, 0, wxALL, 2);
+
+	wxArrayString entityChoices;
+	testFGD.FGDToList(entityChoices, false);
+
+	wxChoice* brushEntityChoice;
+	brushEntityChoice = new wxChoice(objectPage, wxID_ANY, wxDefaultPosition, wxSize(100, -1), entityChoices);
+	brushEntityChoice->Select(0);
+	brushEntityChoice->Enable(false);
+	sizer->Add(brushEntityChoice, 1, wxEXPAND | wxALL, 5);
+
+	wxStaticText* attributesText = new wxStaticText(objectPage, wxID_ANY, "Attributes:");
+	sizer->Add(attributesText, 0, wxALL, 2);
+
+	wxListBox* attributesBox = new wxListBox(objectPage, wxID_ANY, wxPoint(10,10), wxSize(260, 120));
+	std::vector<std::string> allAttributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].allAttributes;
+	for (int i = 0; i < allAttributes.size(); i++){
+		attributesBox->Append(allAttributes[i]);
+	}
+
+	sizer->Add(attributesBox, 0, wxALL, 5);
+
+	objectPage->SetSizer(sizer);
+
+	sizer->Fit(objectPage);
 
 	LayoutDialog();
 }

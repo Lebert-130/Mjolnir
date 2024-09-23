@@ -1,3 +1,16 @@
+@SolidClass = worldspawn : "World entity"
+[
+    message(string) : "Text on entering the world"
+    worldtype(choices) : "Ambience" : 0 =
+    [
+        0 : "Medieval"
+        1 : "Runic (metal)"
+        2 : "Present (base)"
+    ]
+    sounds(integer) : "CD track to play" : 1
+    light(integer) : "Default light level"
+]
+
 @BaseClass size(-16 -16 -24, 16 16 32) color(0 255 0) = PlayerClass []
 @BaseClass size(-16 -16 -16, 16 16 16) color(0 0 255) = SpriteClass []
 

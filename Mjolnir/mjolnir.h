@@ -28,7 +28,8 @@ private:
 enum
 {
 	ID_New = wxID_HIGHEST + 1,
-	ID_Options
+	ID_Options,
+	ID_Map
 };
 
 enum
@@ -69,6 +70,7 @@ private:
 	void OnOptions(wxCommandEvent& event);
 	void OnExit(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
+	void OnMap(wxCommandEvent& event);
 
 	wxAuiManager m_mgr;
 
@@ -79,6 +81,12 @@ class OptionsPropertySheetDialog : public wxPropertySheetDialog
 {
 public:
 	OptionsPropertySheetDialog(wxWindow* parent);
+};
+
+class ObjectPropertiesSheetDialog : public wxPropertySheetDialog
+{
+public:
+	ObjectPropertiesSheetDialog(wxWindow* parent);
 };
 
 class MapView3D : public wxGLCanvas
