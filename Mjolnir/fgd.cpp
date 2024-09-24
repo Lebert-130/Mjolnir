@@ -107,6 +107,8 @@ void CFgd::LoadFGD(const char* filename)
 					Attribute<std::string> tmp_atr;
 					tmp_atr.value = name;
 					tmp_atr.description = description;
+					if (stricmp(type, "integer") == 0)
+						tmp_atr.defaultvalue = "0";
 					tmp_sc.stringAttributes.push_back(tmp_atr);
 				}
 			}
@@ -119,7 +121,7 @@ void CFgd::LoadFGD(const char* filename)
 					Attribute<std::string> tmp_atr;
 					tmp_atr.value = name;
 					tmp_atr.description = description;
-					tmp_sc.defaultvalue = defaultvalue;
+					tmp_atr.defaultvalue = defaultvalue;
 					tmp_sc.stringAttributes.push_back(tmp_atr);
 				} else {
 					tmp_atr_v.description = description;

@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "wx/wxprec.h"
 
 #ifndef WX_PRECOMP
@@ -8,6 +10,7 @@
 #include <wx/dnd.h>
 #include <wx/mdi.h>
 #include <wx/glcanvas.h>
+#include <wx/dcbuffer.h>
 #include <wx/splitter.h>
 #include <wx/splash.h>
 #include <wx/aui/aui.h>
@@ -23,6 +26,8 @@ wxToolBar* tbar;
 wxChoice* entityChoice;
 MapFrame* frame;
 wxMenuBar* menuBar;
+
+wxComboBox* comboBox;
 
 IMPLEMENT_APP(MjolnirApp)
 
@@ -323,17 +328,117 @@ OptionsPropertySheetDialog::OptionsPropertySheetDialog(wxWindow* parent)
 	LayoutDialog();
 }
 
+AngleControl::AngleControl(wxWindow* parent, int initialAngle)
+: wxPanel(parent), angle(initialAngle)
+{
+	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
+	comboBox->SetValue("0");
+	rotationTimer = new wxTimer(this, 1339);
+}
+
+AngleControl::~AngleControl()
+{
+	if (rotationTimer){
+		rotationTimer->Stop();
+		delete rotationTimer;
+	}
+}
+
+void AngleControl::SetAngle(int parm_angle)
+{
+	angle = parm_angle;
+	Refresh();
+}
+
+void AngleControl::OnTimer(wxTimerEvent& event)
+{
+	if (dragging){
+		wxPoint mousePos = wxGetMousePosition();
+		wxPoint clientPos = ScreenToClient(mousePos);
+
+		int mouseX = clientPos.x;
+		int mouseY = clientPos.y;
+
+		wxSize size = GetClientSize();
+		wxPoint center(size.GetWidth() / 2, size.GetHeight() / 2);
+
+		float deltaX = mouseX - center.x;
+		float deltaY = mouseY - center.y;
+
+		angle = static_cast<int>(atan2(-deltaY, deltaX) * (180.0f / M_PI));
+		angle = (angle + 360) % 360;
+
+		SetAngle(angle);
+
+		wxString angleStr = wxString::Format("%d", angle);
+		comboBox->SetValue(angleStr);
+
+		wxMouseState mouseState = wxGetMouseState();
+		if (!mouseState.LeftDown()){
+			rotationTimer->Stop();
+			dragging = false;
+		}
+	}
+}
+
+void AngleControl::OnMouseLeftDown(wxMouseEvent& event)
+{
+	rotationTimer->Start(5);
+	dragging = true;
+}
+
+void AngleControl::OnPaint(wxPaintEvent& event)
+{
+	wxBufferedPaintDC dc(this);
+	PrepareDC(dc);
+
+	//Why is it so difficult to make it transparent???
+	//I had to hard-code the color because I just can't find a way to make it transparent so it grabs whatever color it is in any system.
+	dc.SetBackground(wxBrush(wxColour(249,249,249)));
+	dc.Clear();
+
+	wxSize size = GetClientSize();
+
+	int radius = std::min(size.GetWidth(), size.GetHeight()) / 2;
+	wxPoint center(size.GetWidth() / 2, size.GetHeight() / 2);
+
+	dc.SetBrush(*wxBLACK_BRUSH);
+	dc.DrawCircle(center, radius);
+
+	float radians = angle * (M_PI / 180.0f);
+	int xEnd = center.x + static_cast<int>(radius * std::cos(radians));
+	int yEnd = center.y - static_cast<int>(radius * std::sin(radians));
+
+	dc.SetPen(wxPen(*wxRED, 1));
+	dc.DrawLine(center.x, center.y, xEnd, yEnd);
+
+	radians = (angle + 90) * (M_PI / 180.0f);
+	xEnd = center.x + static_cast<int>(radius * std::cos(radians));
+	yEnd = center.y - static_cast<int>(radius * std::sin(radians));
+
+	dc.SetPen(wxPen(*wxGREEN, 1));
+	dc.DrawLine(center.x, center.y, xEnd, yEnd);
+}
+
+BEGIN_EVENT_TABLE(AngleControl, wxPanel)
+	EVT_PAINT(AngleControl::OnPaint)
+	EVT_TIMER(1339, AngleControl::OnTimer)
+	EVT_LEFT_DOWN(AngleControl::OnMouseLeftDown)
+END_EVENT_TABLE()
+
 ObjectPropertiesSheetDialog::ObjectPropertiesSheetDialog(wxWindow* parent)
 {
 	Create(parent, wxID_ANY, "Object Properties",
 		wxDefaultPosition, wxDefaultSize,
 		wxDEFAULT_DIALOG_STYLE);
 
+	isChoice = false;
+
 	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
 
 	wxBookCtrlBase* bookCtrl = GetBookCtrl();
 
-	wxPanel* objectPage = new wxPanel(bookCtrl);
+	objectPage = new wxPanel(bookCtrl);
 
 	bookCtrl->AddPage(objectPage, "Class Info", true);
 
@@ -343,28 +448,102 @@ ObjectPropertiesSheetDialog::ObjectPropertiesSheetDialog(wxWindow* parent)
 	wxArrayString entityChoices;
 	testFGD.FGDToList(entityChoices, false);
 
-	wxChoice* brushEntityChoice;
 	brushEntityChoice = new wxChoice(objectPage, wxID_ANY, wxDefaultPosition, wxSize(100, -1), entityChoices);
 	brushEntityChoice->Select(0);
 	brushEntityChoice->Enable(false);
-	sizer->Add(brushEntityChoice, 1, wxEXPAND | wxALL, 5);
+
+	wxBoxSizer* rowSizer = new wxBoxSizer(wxHORIZONTAL);
+	rowSizer->Add(brushEntityChoice, 1, wxEXPAND | wxALL, 5);
+
+	wxButton* smarteditButton = new wxButton(objectPage, wxID_ANY, "SmartEdit", wxDefaultPosition, wxDefaultSize, 0);
+	rowSizer->Add(smarteditButton, 0, wxALL, 5);
+
+	wxArrayString directions;
+	directions.Add("Up");
+	directions.Add("Down");
+
+	comboBox = new wxComboBox(objectPage, wxID_ANY, "", wxDefaultPosition, wxSize(60, 30), directions, wxCB_DROPDOWN);
+	rowSizer->Add(comboBox, 0, wxALL, 5);
+
+	AngleControl* angleCtrl = new AngleControl(objectPage, 0);
+	wxBoxSizer* angleSizer = new wxBoxSizer(wxVERTICAL);
+	angleSizer->AddSpacer(-15);
+	angleSizer->Add(angleCtrl, 0, wxALL, 5);
+	angleCtrl->SetMinSize(wxSize(40, 40));
+	rowSizer->Add(angleSizer, 0, wxALL, 5);
+
+	sizer->Add(rowSizer, 0, wxEXPAND | wxALL, 1);
 
 	wxStaticText* attributesText = new wxStaticText(objectPage, wxID_ANY, "Attributes:");
-	sizer->Add(attributesText, 0, wxALL, 2);
+	sizer->Add(attributesText, 0, wxALL, 1);
 
 	wxListBox* attributesBox = new wxListBox(objectPage, wxID_ANY, wxPoint(10,10), wxSize(260, 120));
 	std::vector<std::string> allAttributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].allAttributes;
 	for (int i = 0; i < allAttributes.size(); i++){
 		attributesBox->Append(allAttributes[i]);
 	}
+	attributesBox->Connect(wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler(ObjectPropertiesSheetDialog::OnListBoxSelect), nullptr, this);
 
-	sizer->Add(attributesBox, 0, wxALL, 5);
+	rowSizer2 = new wxBoxSizer(wxHORIZONTAL);
+	rowSizer2->Add(attributesBox, 0, wxALL, 5);
+
+	attributeValues = new wxTextCtrl(objectPage, wxID_ANY, "", wxPoint(10,10), wxSize(130, 20));
+	rowSizer2->Add(attributeValues, 0, wxALL, 5);
+
+	sizer->Add(rowSizer2, 0, wxEXPAND | wxALL, 1);
 
 	objectPage->SetSizer(sizer);
 
 	sizer->Fit(objectPage);
 
 	LayoutDialog();
+}
+
+void ObjectPropertiesSheetDialog::OnListBoxSelect(wxCommandEvent& event)
+{
+	int selectedIndex = event.GetInt();
+	wxString selectedItem = static_cast<wxListBox*>(event.GetEventObject())->GetString(selectedIndex);
+
+	std::vector<Attribute<std::string>> stringAttributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].stringAttributes;
+	std::vector<Attribute<std::vector<std::string>>> choiceAttributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].choiceAttributes;
+	for (int i = 0; i < stringAttributes.size(); i++){
+		if (stringAttributes[i].description == selectedItem){
+			if (isChoice){
+				attributeChoices->Destroy();
+				attributeValues = new wxTextCtrl(objectPage, wxID_ANY, "", wxPoint(10, 10), wxSize(130, 20));
+				rowSizer2->Add(attributeValues, 0, wxALL, 5);
+
+				LayoutDialog();
+				isChoice = false;
+			}
+
+			if (!stringAttributes[i].defaultvalue.empty()){
+				attributeValues->SetValue(stringAttributes[i].defaultvalue);
+				return;
+			}
+		}
+	}
+	for (int i = 0; i < choiceAttributes.size(); i++){
+		if (choiceAttributes[i].description == selectedItem){
+			if (!isChoice){
+				attributeValues->Destroy();
+
+				wxArrayString choices;
+
+				std::vector<std::string> thisAttributeChoices = choiceAttributes[i].value;
+				for (int j = 0; j < thisAttributeChoices.size(); j++){
+					choices.Add(thisAttributeChoices[j]);
+				}
+
+				attributeChoices = new wxChoice(objectPage, wxID_ANY, wxPoint(10, 10), wxSize(120, 20), choices);
+				attributeChoices->Select(atoi(choiceAttributes[i].defaultvalue.c_str()));
+				rowSizer2->Add(attributeChoices, 0, wxALL, 5);
+
+				LayoutDialog();
+				isChoice = true;
+			}
+		}
+	}
 }
 
 bool MjolnirApp::OnInit()

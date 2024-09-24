@@ -20,13 +20,13 @@ private:
 template<typename T>
 struct Attribute {
 	std::string description;
+	std::string defaultvalue;
 	T value;
 };
 
 typedef struct {
 	char classname[24];
 	char description[64];
-	std::string defaultvalue;
 	std::vector<Attribute<std::vector<std::string>>> choiceAttributes;
 	std::vector<Attribute<std::string>> stringAttributes;
 	//The reason why this vector exists is to keep consistency. I don't want to put all the choice attributes at the end of the list.

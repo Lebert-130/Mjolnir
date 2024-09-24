@@ -77,6 +77,24 @@ private:
 	DECLARE_EVENT_TABLE();
 };
 
+class AngleControl : public wxPanel
+{
+public:
+	AngleControl(wxWindow* parent, int initialAngle = 0);
+	~AngleControl();
+	void OnPaint(wxPaintEvent& event);
+	void SetAngle(int parm_angle);
+	void OnMouseLeftDown(wxMouseEvent& event);
+private:
+	void OnTimer(wxTimerEvent& event);
+
+	wxTimer* rotationTimer;
+	int angle;
+	bool dragging;
+
+	DECLARE_EVENT_TABLE();
+};
+
 class OptionsPropertySheetDialog : public wxPropertySheetDialog
 {
 public:
@@ -87,6 +105,14 @@ class ObjectPropertiesSheetDialog : public wxPropertySheetDialog
 {
 public:
 	ObjectPropertiesSheetDialog(wxWindow* parent);
+private:
+	void OnListBoxSelect(wxCommandEvent& event);
+	wxChoice* brushEntityChoice;
+	wxTextCtrl* attributeValues;
+	wxChoice* attributeChoices;
+	wxBoxSizer* rowSizer2;
+	wxPanel* objectPage;
+	bool isChoice;
 };
 
 class MapView3D : public wxGLCanvas
