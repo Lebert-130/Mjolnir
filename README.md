@@ -11,6 +11,8 @@ At this moment, it's at its prototype stages, or at alpha version, so it is very
 
 ## Some building information
 
-You need Visual Studio 2013 to be able to build this program. The project is inside the VS2013 folder, the wxWidgets 2.8.6 libs are included in the project, you just have to grab the include headers from somewhere else.
+You need Visual Studio 2013 or 2019 to be able to build this program. 
 
-I might upgrade wxWidgets one day.
+The VS2013 project is inside the VS2013 folder and the VS2019 project is inside the VS2019 folder. 
+
+The wxWidgets 2.8.12 libs are included in the project, for each VS version.
