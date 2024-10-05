@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <math.h>
 
 #include "wx/wxprec.h"
 
@@ -406,15 +407,15 @@ void AngleControl::OnPaint(wxPaintEvent& event)
 	dc.DrawCircle(center, radius);
 
 	float radians = angle * (M_PI / 180.0f);
-	int xEnd = center.x + static_cast<int>(radius * std::cos(radians));
-	int yEnd = center.y - static_cast<int>(radius * std::sin(radians));
+	int xEnd = center.x + static_cast<int>(radius * cos(radians));
+	int yEnd = center.y - static_cast<int>(radius * sin(radians));
 
 	dc.SetPen(wxPen(*wxRED, 1));
 	dc.DrawLine(center.x, center.y, xEnd, yEnd);
 
 	radians = (angle + 90) * (M_PI / 180.0f);
-	xEnd = center.x + static_cast<int>(radius * std::cos(radians));
-	yEnd = center.y - static_cast<int>(radius * std::sin(radians));
+	xEnd = center.x + static_cast<int>(radius * cos(radians));
+	yEnd = center.y - static_cast<int>(radius * sin(radians));
 
 	dc.SetPen(wxPen(*wxGREEN, 1));
 	dc.DrawLine(center.x, center.y, xEnd, yEnd);

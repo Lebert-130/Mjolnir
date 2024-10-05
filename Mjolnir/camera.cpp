@@ -3,6 +3,7 @@
 #include <GL/glu.h>
 #include <math.h>
 
+#include "vector.h"
 #include "camera.h"
 
 #ifndef M_PI
@@ -17,31 +18,27 @@ void CCamera::Init()
 
 void CCamera::Refresh()
 {
-	m_lx = cos(m_yaw) * cos(m_pitch);
-	m_ly = sin(m_pitch);
-	m_lz = sin(m_yaw) * cos(m_pitch);
+	m_veclPosition = Vector(cos(m_yaw) * cos(m_pitch), sin(m_pitch), sin(m_yaw) * cos(m_pitch));
 
 	m_strafe_lx = cos(m_yaw - M_PI/2);
 	m_strafe_lz = sin(m_yaw - M_PI/2);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(m_x, m_y, m_z, m_x + m_lx, m_y + m_ly, m_z + m_lz, 0.0, 1.0, 0.0);
+	gluLookAt(m_vecPosition[0], m_vecPosition[1], m_vecPosition[2], 
+		m_vecPosition[0] + m_veclPosition[0], m_vecPosition[1] + m_veclPosition[1], m_vecPosition[2] + m_veclPosition[2],
+		0.0, 1.0, 0.0);
 }
 
-void CCamera::SetPos(float x, float y, float z)
+void CCamera::SetPos(Vector pos)
 {
-	m_x = x;
-	m_y = y;
-	m_z = z;
+	m_vecPosition = pos;
 	Refresh();
 }
 
-void CCamera::GetPos(float &x, float &y, float &z)
+void CCamera::GetPos(Vector& pos)
 {
-	x = m_x;
-	y = m_y;
-	z = m_z;
+	pos = m_vecPosition;
 }
 
 void CCamera::Move(float speed, bool positive)
@@ -49,13 +46,14 @@ void CCamera::Move(float speed, bool positive)
 	if(!positive)
 		speed = -speed;
 
-	float lx = cos(m_yaw)*cos(m_pitch);
-    float ly = sin(m_pitch);
-    float lz = sin(m_yaw)*cos(m_pitch);
+	float lx = cos(m_yaw) * cos(m_pitch);
+	float ly = sin(m_pitch);
+	float lz = sin(m_yaw) * cos(m_pitch);
 
-	m_x = m_x + speed * lx;
-	m_y = m_y + speed * ly;
-	m_z = m_z + speed * lz;
+	Vector direction(lx, ly, lz);
+	direction = direction * speed;
+
+	m_vecPosition = m_vecPosition + direction;
 }
 
 void CCamera::Strafe(float speed, bool positive)
@@ -63,8 +61,7 @@ void CCamera::Strafe(float speed, bool positive)
 	if(!positive)
 		speed = -speed;
 
-	m_x = m_x + speed * m_strafe_lx;
-	m_z = m_z + speed * m_strafe_lz;
+	m_vecPosition = Vector(m_vecPosition[0] + speed * m_strafe_lx, m_vecPosition[1], m_vecPosition[2] + speed * m_strafe_lz);
 }
 
 void CCamera::RotateYaw(float angle)

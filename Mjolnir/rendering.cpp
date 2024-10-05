@@ -20,6 +20,7 @@
 #include <GL/GLU.h>
 
 #include "mjolnir.h"
+#include "vector.h"
 #include "camera.h"
 #include "fgd.h"
 #include "map.h"

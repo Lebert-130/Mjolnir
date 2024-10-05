@@ -23,10 +23,14 @@ public:
 		return Vector(coords[0]/length, coords[1]/length, coords[2]/length);
 	}
 
+	Vector operator+(const float &f) const { return  Vector(coords[0] + f, coords[1] + f, coords[2] + f); }
 	Vector operator+(const Vector &v2) const { return Vector(coords[0] + v2.coords[0], coords[1] + v2.coords[1], coords[2] + v2.coords[2]); }
+	
 	Vector operator-(const Vector &v2) const { return Vector(coords[0] - v2.coords[0], coords[1] - v2.coords[1], coords[2] - v2.coords[2]); }
+	
 	Vector operator*(const Vector &v2) const { return Vector(coords[0] * v2.coords[0], coords[1] * v2.coords[1], coords[2] * v2.coords[2]); }
 	Vector operator*(const float &f) const { return Vector(coords[0] * f, coords[1] * f, coords[2] * f); }
+	
 	Vector operator/(const Vector &v2) const { return Vector(coords[0] / v2.coords[0], coords[1] / v2.coords[1], coords[2] / v2.coords[2]); }
 
 	bool operator==(const Vector &v2) const { return coords[0] == v2.coords[0] && coords[1] == v2.coords[1] && coords[2] == v2.coords[2]; }
