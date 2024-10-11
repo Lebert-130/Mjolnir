@@ -433,6 +433,9 @@ ObjectPropertiesSheetDialog::ObjectPropertiesSheetDialog(wxWindow* parent)
 		wxDefaultPosition, wxDefaultSize,
 		wxDEFAULT_DIALOG_STYLE);
 
+	attributeChoices = NULL;
+	attributeValues = NULL;
+
 	isChoice = false;
 
 	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
@@ -479,9 +482,9 @@ ObjectPropertiesSheetDialog::ObjectPropertiesSheetDialog(wxWindow* parent)
 	sizer->Add(attributesText, 0, wxALL, 1);
 
 	wxListBox* attributesBox = new wxListBox(objectPage, wxID_ANY, wxPoint(10,10), wxSize(260, 120));
-	std::vector<std::string> allAttributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].allAttributes;
-	for (int i = 0; i < allAttributes.size(); i++){
-		attributesBox->Append(allAttributes[i]);
+	std::vector<Attribute> attributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].attributes;
+	for (int i = 0; i < attributes.size(); i++){
+		attributesBox->Append(attributes[i].description);
 	}
 	attributesBox->Connect(wxEVT_COMMAND_LISTBOX_SELECTED, wxCommandEventHandler(ObjectPropertiesSheetDialog::OnListBoxSelect), nullptr, this);
 
@@ -505,44 +508,48 @@ void ObjectPropertiesSheetDialog::OnListBoxSelect(wxCommandEvent& event)
 	int selectedIndex = event.GetInt();
 	wxString selectedItem = static_cast<wxListBox*>(event.GetEventObject())->GetString(selectedIndex);
 
-	std::vector<Attribute<std::string>> stringAttributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].stringAttributes;
-	std::vector<Attribute<std::vector<std::string>>> choiceAttributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].choiceAttributes;
-	for (int i = 0; i < stringAttributes.size(); i++){
-		if (stringAttributes[i].description == selectedItem){
-			if (isChoice){
-				attributeChoices->Destroy();
-				attributeValues = new wxTextCtrl(objectPage, wxID_ANY, "", wxPoint(10, 10), wxSize(130, 20));
-				rowSizer2->Add(attributeValues, 0, wxALL, 5);
+	std::vector<Attribute> attributes = scMap[std::string(brushEntityChoice->GetString(brushEntityChoice->GetSelection()))].attributes;
 
-				LayoutDialog();
-				isChoice = false;
-			}
+	for (int i = 0; i < attributes.size(); i++){
+		Attribute attr = attributes[i];
 
-			if (!stringAttributes[i].defaultvalue.empty()){
-				attributeValues->SetValue(stringAttributes[i].defaultvalue);
-				return;
-			}
-		}
-	}
-	for (int i = 0; i < choiceAttributes.size(); i++){
-		if (choiceAttributes[i].description == selectedItem){
-			if (!isChoice){
-				attributeValues->Destroy();
+		if (attr.description == selectedItem){
+			if (attr.choices.empty()){
+				//wxLogMessage("This is a wxTextCtrl attribute");
 
-				wxArrayString choices;
+				if (isChoice){
+					attributeChoices->Destroy();
+					attributeValues = new wxTextCtrl(objectPage, wxID_ANY, "", wxPoint(10, 10), wxSize(130, 20));
+					rowSizer2->Add(attributeValues, 0, wxALL, 5);
 
-				std::vector<std::string> thisAttributeChoices = choiceAttributes[i].value;
-				for (int j = 0; j < thisAttributeChoices.size(); j++){
-					choices.Add(thisAttributeChoices[j]);
+					LayoutDialog();
+					isChoice = false;
 				}
 
-				attributeChoices = new wxChoice(objectPage, wxID_ANY, wxPoint(10, 10), wxSize(120, 20), choices);
-				attributeChoices->Select(atoi(choiceAttributes[i].defaultvalue.c_str()));
-				rowSizer2->Add(attributeChoices, 0, wxALL, 5);
-
-				LayoutDialog();
-				isChoice = true;
+				if (!attr.defaultvalue.empty())
+					attributeValues->SetValue(attr.defaultvalue);
 			}
+			else {
+				//wxLogMessage("This is a wxChoice attribute");
+
+				if (!isChoice){
+					attributeValues->Destroy();
+					wxArrayString choices;
+
+					for (int j = 0; j < attr.choices.size(); j++){
+						choices.Add(attr.choices[j]);
+					}
+
+					attributeChoices = new wxChoice(objectPage, wxID_ANY, wxPoint(10, 10), wxSize(120, 20), choices);
+					attributeChoices->Select(atoi(attr.defaultvalue.c_str()));
+					rowSizer2->Add(attributeChoices, 0, wxALL, 5);
+
+					LayoutDialog();
+					isChoice = true;
+				}
+			}
+
+			return;
 		}
 	}
 }
@@ -554,7 +561,7 @@ bool MjolnirApp::OnInit()
 	if(splashScreen.LoadFile("splashscreen", wxBITMAP_TYPE_RESOURCE)){
 		wxSplashScreen* splash = new wxSplashScreen(splashScreen,
 			wxSPLASH_CENTRE_ON_SCREEN|wxSPLASH_TIMEOUT, 2000, NULL, -1,
-			wxDefaultPosition, wxDefaultSize, wxNO_BORDER | wxSTAY_ON_TOP);
+			wxDefaultPosition, wxDefaultSize, wxNO_BORDER);
 	}
 
 	Sleep(2000);
