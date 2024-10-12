@@ -59,6 +59,7 @@ public:
 	}
 
 	Token GetNextToken();
+	int FindPattern(const std::vector<std::vector<LexType>>& pattern, size_t& matchedPatternIndex);
 private:
 	FILE* m_file;
 	std::string m_line;
@@ -98,15 +99,6 @@ private:
 	}
 };
 
-class CFgd
-{
-public:
-	void LoadFGD(const char* filename);
-	void FGDToList(wxArrayString& array, bool isPointClass);
-private:
-	FILE* fgdFile;
-};
-
 struct Attribute {
 	std::string name;
 	std::string type;
@@ -117,32 +109,37 @@ struct Attribute {
 	std::vector<std::string> choices;
 };
 
-struct SharedFields {
+typedef struct BaseClass {
 	Vector sizeMin;
 	Vector sizeMax;
 	Vector color;
 
-	char classname[24];
+	std::string classname;
 	ClassType type;
-};
-
-typedef struct BaseClass : public SharedFields {
-
 } BaseClass;
 
 typedef struct : public BaseClass {
-	char description[64];
+	std::string description;
 	std::vector<Attribute> attributes;
-
-	//std::vector<Attribute<std::vector<std::string>>> choiceAttributes;
-	//std::vector<Attribute<std::string>> stringAttributes;
-	//The reason why this vector exists is to keep consistency. I don't want to put all the choice attributes at the end of the list.
-	//std::vector<std::string> allAttributes;
 } SolidClass;
 
 typedef struct : public BaseClass {
-	char description[64];
+	std::string description;
 } PointClass;
+
+class CFgd
+{
+public:
+	void LoadFGD(const char* filename);
+	void FGDToList(wxArrayString& array, bool isPointClass);
+private:
+	FILE* fgdFile;
+	//We need to allocate a temporary base class inside this class so it's much easier to access
+	//to it when we need it, before sending it to the Map.
+	void* m_pTmpClass;
+	//Same here for attributes before sending them to the classes
+	Attribute* m_pAttribute;
+};
 
 extern std::map<std::string, PointClass> pcMap;
 extern std::map<std::string, SolidClass> scMap;

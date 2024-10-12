@@ -18,7 +18,7 @@
 std::map<std::string, PointClass> pcMap;
 std::map<std::string, SolidClass> scMap;
 
-auto ParseClassType(const std::string& type) -> SharedFields*
+auto ParseClassType(const std::string& type) -> BaseClass*
 {
 	if (type.compare("BaseClass") == 0){
 		auto* tmp_baseclass = new BaseClass();
@@ -39,6 +39,9 @@ auto ParseClassType(const std::string& type) -> SharedFields*
 }
 
 std::vector<Token> tokens;
+size_t currentTokenIndex = 0;
+
+//TODO: Reinforce the names of some variables such as: base(), size() and color()
 
 void CFgd::LoadFGD(const char* filename)
 {
@@ -66,272 +69,204 @@ void CFgd::LoadFGD(const char* filename)
 		tokens.push_back(token);
 	}
 
-	void* tmp_class = nullptr;
-	auto iterator = tokens.begin();
-	int levelsOfBrackets = 0;
-	std::vector<Attribute> attributes;
+	std::vector<std::vector<LexType>> patterns = {
+		{ AT }, //@TypeClass
+		{ EQUALS, VALUE }, //= value
+		{ COLON, STRING, COLON, VALUE }, //: "string" : value
+		{ VALUE, COLON, STRING }, //value : "string"
+		{ COLON, STRING }, //: "string"
+		{ EQUALS, OPENBRACKET }, //= [
+		{ OPENBRACKET }, //[
+		{ VALUE, OPENPAREN, VALUE, VALUE, VALUE, COMMA, VALUE, VALUE, VALUE, CLOSEPAREN }, //value(value value value, value value value)
+		{ VALUE, OPENPAREN, VALUE, VALUE, VALUE, CLOSEPAREN }, //value(value value value)
+		{ VALUE, OPENPAREN, VALUE, CLOSEPAREN }, //value(value)
+		{ CLOSEBRACKET } //]
+	};
 
-	while (iterator != tokens.end()){
-		if (iterator->GetType() == AT){
-			auto entityClass = ParseClassType(iterator->GetLexeme());
+	int matchIndex;
+	int levelOfBrackets = 0;
+	size_t matchedPatternIndex;
+
+	while ((matchIndex = lexer.FindPattern(patterns, matchedPatternIndex)) != -1){
+		if (matchedPatternIndex == 0){
+			auto entityClass = ParseClassType(tokens[currentTokenIndex].GetLexeme());
 
 			if (entityClass != nullptr)
-				tmp_class = (void*)entityClass;
-			else {
+				m_pTmpClass = (void*)entityClass;
+			else{
 				MessageBox(NULL, "Failed to create entity class", "FGD Error", MB_ICONERROR | MB_OK);
 				exit(-1);
 			}
 		}
-
-		if (iterator->GetType() == VALUE){
-			if (levelsOfBrackets == 1){
-				Attribute tmp_atr;
-
-				tmp_atr.name = iterator->GetLexeme();
-
-				iterator++;
-
-				if (iterator->GetType() != OPENPAREN){
-					MessageBox(NULL, "No type for attribute", "FGD Error", MB_ICONERROR | MB_OK);
-					exit(-1);
-				}
-
-				iterator++;
-
-				tmp_atr.type = iterator->GetLexeme();
-
-				iterator++;
-
-				if (iterator->GetType() != CLOSEPAREN){
-					MessageBox(NULL, "Unclosed attribute", "FGD Error", MB_ICONERROR | MB_OK);
-					exit(-1);
-				}
-
-				iterator++;
-				iterator++;
-
-				std::string tmp_lexeme = iterator->GetLexeme();
-				tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
-
-				tmp_atr.description = tmp_lexeme;
-
-				iterator++;
-
-				if (iterator->GetType() == VALUE){
-					attributes.push_back(tmp_atr);
-					continue;
-				}
-
-				if (levelsOfBrackets == 1){
-					if (iterator->GetType() == CLOSEBRACKET){
-						attributes.push_back(tmp_atr);
-						continue;
-					}
-				}
-
-				iterator++;
-
-				tmp_atr.defaultvalue = iterator->GetLexeme();
-
-				iterator++;
-
-				if (iterator->GetType() == VALUE){
-					attributes.push_back(tmp_atr);
-					continue;
-				}
-
-				iterator++;
-				iterator++;
-				iterator++;
-				iterator++;
-
-				levelsOfBrackets++;
-
-				std::vector<std::string> choices;
-
-				tmp_lexeme = iterator->GetLexeme();
-				tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
-
-				choices.push_back(tmp_lexeme);
-
-				iterator++;
-				iterator++;
-				iterator++;
-
-				tmp_lexeme = iterator->GetLexeme();
-				tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
-
-				choices.push_back(tmp_lexeme);
-				iterator++;
-				iterator++;
-				iterator++;
-
-				tmp_lexeme = iterator->GetLexeme();
-				tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
-
-				choices.push_back(tmp_lexeme);
-
-				tmp_atr.choices = choices;
-
-				attributes.push_back(tmp_atr);
-				iterator++;
-				continue;
-			}
-
-			iterator--;
-			if (iterator->GetType() == EQUALS){
-				iterator++;
-				BaseClass* base = (BaseClass*)tmp_class;
-				strcpy(base->classname, iterator->GetLexeme().c_str());
+		else if (matchedPatternIndex == 1){
+			BaseClass* tmp_baseclass = (BaseClass*)m_pTmpClass;
+			if (tmp_baseclass){
+				tmp_baseclass->classname = tokens[matchIndex + 1].GetLexeme();
 			}
 			else {
-				iterator++;
-			}
-
-			if ((iterator->GetLexeme().compare("size") == 0)){
-				iterator++;
-				Vector minSize;
-
-				for (int i = 0; i < 3; i++){
-					iterator++;
-					minSize[i] = atoi(iterator->GetLexeme().c_str());
-				}
-
-				iterator++;
-				Vector maxSize;
-
-				if (iterator->GetType() != COMMA){
-					MessageBox(NULL, "No max size for entity found", "FGD Error", MB_ICONERROR | MB_OK);
-					exit(-1);
-				}
-
-				for (int i = 0; i < 3; i++){
-					iterator++;
-					maxSize[i] = atoi(iterator->GetLexeme().c_str());
-				}
-
-				iterator++;
-				if (iterator->GetType() != CLOSEPAREN){
-					MessageBox(NULL, "Unclosed size", "FGD Error", MB_ICONERROR | MB_OK);
-					exit(-1);
-				}
-				else {
-					if (tmp_class != nullptr) {
-						BaseClass* base = (BaseClass*)tmp_class;
-						base->sizeMin = minSize;
-						base->sizeMax = maxSize;
-					}
-					else {
-						MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
-						exit(-1);
-					}
-				}
-			}
-			if ((iterator->GetLexeme().compare("color") == 0)){
-				iterator++;
-				Vector color;
-
-				for (int i = 0; i < 3; i++){
-					iterator++;
-					color[i] = atoi(iterator->GetLexeme().c_str());
-				}
-
-				iterator++;
-				if (iterator->GetType() != CLOSEPAREN){
-					MessageBox(NULL, "Unclosed color", "FGD Error", MB_ICONERROR | MB_OK);
-					exit(-1);
-				}
-				else {
-					if (tmp_class != nullptr) {
-						BaseClass* base = (BaseClass*)tmp_class;
-						base->color = color;
-					}
-					else {
-						MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
-						exit(-1);
-					}
-				}
-			}
-			if ((iterator->GetLexeme().compare("base") == 0)){
-				char message[64];
-
-				iterator++;
-
-				if (iterator->GetType() != OPENPAREN){
-					MessageBox(NULL, "No base class", "FGD Error", MB_ICONERROR | MB_OK);
-					exit(-1);
-				}
-
-				iterator++;
-
-				BaseClass* base = (BaseClass*)tmp_class;
-
-				base->sizeMin = bcMap[iterator->GetLexeme()].sizeMin;
-				base->sizeMax = bcMap[iterator->GetLexeme()].sizeMax;
-				base->color = bcMap[iterator->GetLexeme()].color;
-
-				iterator++;
-
-				if (iterator->GetType() != CLOSEPAREN){
-					MessageBox(NULL, "Unclosed base", "FGD Error", MB_ICONERROR | MB_OK);
-					exit(-1);
-				}
-			}
-		}
-
-		if (iterator->GetType() == STRING){
-			iterator--;
-			if (iterator->GetType() != COLON){
-				MessageBox(NULL, "Disconnected string", "FGD Error", MB_ICONERROR | MB_OK);
+				MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
 				exit(-1);
 			}
-			iterator++;
+		}
+		else if (matchedPatternIndex == 2){
+			if (m_pAttribute){
+				std::string tmp_lexeme = tokens[matchIndex + 1].GetLexeme();
+				tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
 
-			std::string tmp_lexeme = iterator->GetLexeme();
-			tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
-
-			if (levelsOfBrackets == 0){
-				BaseClass* base = (BaseClass*)tmp_class;
-
-				if (base->type == POINTCLASS){
-					PointClass* point = static_cast<PointClass*>(base);
-					strcpy(point->description, tmp_lexeme.c_str());
-				}
-				if (base->type == SOLIDCLASS){
-					SolidClass* solid = static_cast<SolidClass*>(base);
-					strcpy(solid->description, tmp_lexeme.c_str());
-				}
+				m_pAttribute->description = tmp_lexeme;
+				m_pAttribute->defaultvalue = tokens[matchIndex + 3].GetLexeme();
+			}
+			else {
+				MessageBox(NULL, "Attribute is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+				exit(-1);
 			}
 		}
-
-		if (iterator->GetType() == OPENBRACKET)
-			levelsOfBrackets++;
-
-		if (iterator->GetType() == CLOSEBRACKET){
-			levelsOfBrackets--;
-
-			if (levelsOfBrackets == 0){
-				BaseClass* base = (BaseClass*)tmp_class;
-
-				if (base->type == BASECLASS){
-					bcMap[base->classname] = *base;
-					delete base;
-				}
-				else if (base->type == POINTCLASS){
-					PointClass* point = static_cast<PointClass*>(base);
-					pcMap[point->classname] = *point;
-					delete point;
+		else if (matchedPatternIndex == 3){
+			if (levelOfBrackets == 2){
+				if (m_pAttribute){
+					std::string tmp_lexeme = tokens[matchIndex + 2].GetLexeme();
+					tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
+					m_pAttribute->choices.push_back(tmp_lexeme);
 				}
 				else {
-					SolidClass* solid = static_cast<SolidClass*>(base);
-					solid->attributes = attributes;
-					scMap[solid->classname] = *solid;
-					delete solid;
+					MessageBox(NULL, "Attribute is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+					exit(-1);
+				}
+			}
+			else {
+				MessageBox(NULL, "Outside brackets of the attribute", "FGD Error", MB_ICONERROR | MB_OK);
+				exit(-1);
+			}
+		}
+		else if (matchedPatternIndex == 4){
+			std::string tmp_lexeme = tokens[matchIndex + 1].GetLexeme();
+			tmp_lexeme.erase(std::remove(tmp_lexeme.begin(), tmp_lexeme.end(), '"'), tmp_lexeme.end());
+
+			if (levelOfBrackets == 0){
+				BaseClass* tmp_baseclass = (BaseClass*)m_pTmpClass;
+				if (tmp_baseclass){
+					if (tmp_baseclass->type == SOLIDCLASS){
+						SolidClass* tmp_solidclass = static_cast<SolidClass*>(tmp_baseclass);
+						tmp_solidclass->description = tmp_lexeme;
+					}
+					else if (tmp_baseclass->type == POINTCLASS){
+						PointClass* tmp_pointclass = static_cast<PointClass*>(tmp_baseclass);
+						tmp_pointclass->description = tmp_lexeme;
+					}
+				}
+				else {
+					MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+					exit(-1);
+				}
+			}
+			else if (levelOfBrackets == 1){
+				if (m_pAttribute){
+					m_pAttribute->description = tmp_lexeme;
+				}
+				else {
+					MessageBox(NULL, "Attribute is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+					exit(-1);
+				}
+			}
+		}
+		else if (matchedPatternIndex == 5){
+			//Sanity check
+			if (!m_pAttribute){
+				MessageBox(NULL, "Attribute is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+				exit(-1);
+			}
+			levelOfBrackets++;
+		}
+		else if (matchedPatternIndex == 6){
+			levelOfBrackets++;
+		}
+		else if (matchedPatternIndex == 7){
+			BaseClass* tmp_baseclass = (BaseClass*)m_pTmpClass;
+			if (tmp_baseclass){
+				tmp_baseclass->sizeMin = Vector(std::stof(tokens[matchIndex + 2].GetLexeme()), std::stof(tokens[matchIndex + 3].GetLexeme()), std::stof(tokens[matchIndex + 4].GetLexeme()));
+				tmp_baseclass->sizeMax = Vector(std::stof(tokens[matchIndex + 6].GetLexeme()), std::stof(tokens[matchIndex + 7].GetLexeme()), std::stof(tokens[matchIndex + 8].GetLexeme()));
+			}
+			else {
+				MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+				exit(-1);
+			}
+		}
+		else if (matchedPatternIndex == 8){
+			BaseClass* tmp_baseclass = (BaseClass*)m_pTmpClass;
+			if (tmp_baseclass){
+				tmp_baseclass->color = Vector(std::stof(tokens[matchIndex + 2].GetLexeme()), std::stof(tokens[matchIndex + 3].GetLexeme()), std::stof(tokens[matchIndex + 4].GetLexeme()));
+			}
+			else {
+				MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+				exit(-1);
+			}
+		}
+		else if (matchedPatternIndex == 9){
+			if (levelOfBrackets == 0){
+				BaseClass* tmp_baseclass = (BaseClass*)m_pTmpClass;
+				if (tmp_baseclass){
+					tmp_baseclass->sizeMin = bcMap[tokens[matchIndex + 2].GetLexeme()].sizeMin;
+					tmp_baseclass->sizeMax = bcMap[tokens[matchIndex + 2].GetLexeme()].sizeMax;
+					tmp_baseclass->color = bcMap[tokens[matchIndex + 2].GetLexeme()].color;
+				}
+				else {
+					MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+					exit(-1);
+				}
+			}
+			if (levelOfBrackets == 1){
+				if (m_pAttribute == nullptr){
+					m_pAttribute = new Attribute();
+				}
+				else {
+					BaseClass* tmp_baseclass = (BaseClass*)m_pTmpClass;
+					if (tmp_baseclass){
+						if (tmp_baseclass->type == SOLIDCLASS){
+							SolidClass* tmp_solidclass = static_cast<SolidClass*>(tmp_baseclass);
+							tmp_solidclass->attributes.push_back(*m_pAttribute);
+						}
+					}
+					else {
+						MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+						exit(-1);
+					}
+
+					delete m_pAttribute;
+					m_pAttribute = new Attribute();
+				}
+
+				m_pAttribute->name = tokens[matchIndex].GetLexeme();
+				m_pAttribute->type = tokens[matchIndex + 2].GetLexeme();
+			}
+		}
+		else if (matchedPatternIndex == 10){
+			levelOfBrackets--;
+
+			if (levelOfBrackets == 0){
+				BaseClass* tmp_baseclass = (BaseClass*)m_pTmpClass;
+				if (tmp_baseclass){
+					if (tmp_baseclass->type == BASECLASS){
+						bcMap[tmp_baseclass->classname] = *tmp_baseclass;
+					}
+					if (tmp_baseclass->type == POINTCLASS){
+						PointClass* tmp_pointclass = static_cast<PointClass*>(tmp_baseclass);
+						pcMap[tmp_pointclass->classname] = *tmp_pointclass;
+					}
+					if (tmp_baseclass->type == SOLIDCLASS){
+						SolidClass* tmp_solidclass = static_cast<SolidClass*>(tmp_baseclass);
+						//Push the last remaining attribute
+						tmp_solidclass->attributes.push_back(*m_pAttribute);
+						scMap[tmp_solidclass->classname] = *tmp_solidclass;
+					}
+				}
+				else {
+					MessageBox(NULL, "Entity class is not initialized", "FGD Error", MB_ICONERROR | MB_OK);
+					exit(-1);
 				}
 			}
 		}
 
-		iterator++;
+		currentTokenIndex = matchIndex + patterns[matchedPatternIndex].size();
 	}
 }
 
@@ -345,6 +280,36 @@ void CFgd::FGDToList(wxArrayString& array, bool isPointClass)
 		for (std::map<std::string, SolidClass>::iterator it = scMap.begin(); it != scMap.end(); it++)
 			array.Add(it->first);
 	}
+}
+
+int LexReader::FindPattern(const std::vector<std::vector<LexType>>& patterns, size_t& matchedPatternIndex) {
+	size_t startIndex = currentTokenIndex;
+
+	while (currentTokenIndex < tokens.size()){
+		for (size_t i = 0; i < patterns.size(); i++){
+			const auto& pattern = patterns[i];
+			size_t patternIndex = 0;
+			size_t tokenIndex = currentTokenIndex;
+
+			while (tokenIndex < tokens.size() && patternIndex < pattern.size()){
+				if (tokens[tokenIndex].GetType() != pattern[patternIndex])
+					break; //Stop if any token doesn't match
+				patternIndex++;
+				tokenIndex++;
+			}
+
+			if (patternIndex == pattern.size()){
+				matchedPatternIndex = i;
+				return startIndex;
+			}
+		}
+
+		currentTokenIndex++;
+		startIndex = currentTokenIndex;
+	}
+
+	//No matches found
+	return -1;
 }
 
 Token LexReader::GetNextToken()
