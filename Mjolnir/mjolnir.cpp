@@ -21,6 +21,7 @@
 #include "mjolnir.h"
 #include "fgd.h"
 #include "map.h"
+#include "wad3.h"
 
 CFgd testFGD;
 wxToolBar* tbar;
@@ -65,6 +66,7 @@ MapFrame::MapFrame(const wxString& title)
 	m_mgr.SetManagedWindow(this);
 
 	testFGD.LoadFGD("Test.fgd");
+	LoadWadFile("test.wad");
 
 	visgroupPanel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
 	wxDragListBox* visgroupListBox = new wxDragListBox(visgroupPanel);

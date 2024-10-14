@@ -87,6 +87,7 @@
     <ClCompile Include="..\fgd.cpp" />
     <ClCompile Include="..\mjolnir.cpp" />
     <ClCompile Include="..\rendering.cpp" />
+    <ClCompile Include="..\wad3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\camera.h" />
@@ -94,6 +95,7 @@
     <ClInclude Include="..\map.h" />
     <ClInclude Include="..\mjolnir.h" />
     <ClInclude Include="..\vector.h" />
+    <ClInclude Include="..\wad3.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\Mjolnir.rc" />

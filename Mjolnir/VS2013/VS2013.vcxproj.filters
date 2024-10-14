@@ -30,6 +30,9 @@
     <ClCompile Include="..\rendering.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\wad3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\mjolnir.h">
@@ -45,6 +48,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\fgd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wad3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
