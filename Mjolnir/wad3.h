@@ -27,6 +27,14 @@ typedef struct miptex_s
 	unsigned	offsets[MIPLEVELS];		// four mip maps stored
 } miptex_t;
 
+typedef struct
+{
+	std::string name;
+	wxImage guiImage;
+} Texture;
+
 void LoadWadFile(const char* wadfile);
+
+extern std::vector<Texture> textures;
 
 #endif

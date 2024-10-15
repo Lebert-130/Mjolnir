@@ -1,6 +1,8 @@
 #ifndef MJOLNIRAPP_H
 #define MJOLNIRAPP_H
 
+#include <wx/listctrl.h>
+
 class wxDragListBox : wxCheckListBox
 {
 public:
@@ -60,6 +62,7 @@ public:
 class MapFrame : public wxMDIParentFrame
 {
 public:
+	wxPanel* texturePanel;
 	wxPanel* visgroupPanel;
 	wxPanel* objectPanel;
 
@@ -71,6 +74,7 @@ private:
 	void OnExit(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
 	void OnMap(wxCommandEvent& event);
+	void OnShowDialog(wxCommandEvent& event);
 
 	wxAuiManager m_mgr;
 
@@ -93,6 +97,17 @@ private:
 	bool dragging;
 
 	DECLARE_EVENT_TABLE();
+};
+
+class TextureBrowserDialog : public wxDialog
+{
+public:
+	TextureBrowserDialog(wxWindow* parent, const wxString& title);
+private:
+	void InitImageList();
+
+	wxListCtrl* m_listCtrl;
+	wxImageList* m_imageList;
 };
 
 class OptionsPropertySheetDialog : public wxPropertySheetDialog

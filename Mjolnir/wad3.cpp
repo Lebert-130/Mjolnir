@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <vector>
+#include <string>
 
 #include "wx/wxprec.h"
 
@@ -12,6 +13,7 @@
 #include "wad3.h"
 
 std::vector<lumpinfo_t*> lumps;
+std::vector<Texture> textures;
 
 void LoadWadFile(const char* wadfile)
 {
@@ -44,6 +46,9 @@ void LoadWadFile(const char* wadfile)
 
 	for (int i = 0; i < wadInfo->numlumps; i++){
 		fseek(wad, lumps[i]->filepos, SEEK_SET);
+
+		int imageStartPos = ftell(wad);
+
 		miptex_t* miptex = new miptex_t();
 		fread(miptex, sizeof(miptex_t), 1, wad);
 
@@ -70,7 +75,7 @@ void LoadWadFile(const char* wadfile)
 			exit(-1);
 		}
 
-		int offset = ftell(wad) - 12;
+		int offset = ftell(wad) - imageStartPos;
 		int paletteSize = lumps[i]->size - offset;
 
 		char* palette = (char*)malloc(paletteSize);
@@ -89,14 +94,11 @@ void LoadWadFile(const char* wadfile)
 			}
 		}
 
-		//Temporary texture from WAD export
-		if (img.SaveFile("output.bmp", wxBITMAP_TYPE_BMP)){
-			MessageBox(NULL, "Image saved successfully as output.bmp", "WAD Information", MB_ICONASTERISK | MB_OK);
-		}
-		else {
-			MessageBox(NULL, "Failed to save the image", "WAD Error", MB_ICONERROR | MB_OK);
-			exit(-1);
-		}
+		Texture texture;
+		texture.name = lumps[i]->name;
+		texture.guiImage = img;
+
+		textures.push_back(texture);
 
 		free(image);
 		free(palette);

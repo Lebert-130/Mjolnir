@@ -23,6 +23,8 @@
 #include "map.h"
 #include "wad3.h"
 
+#define IMAGE_SIZE 128
+
 CFgd testFGD;
 wxToolBar* tbar;
 wxChoice* entityChoice;
@@ -57,6 +59,42 @@ AboutDialog::AboutDialog(wxWindow* parent)
 	okButton->SetDefault();
 }
 
+TextureBrowserDialog::TextureBrowserDialog(wxWindow* parent, const wxString& title)
+: wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxSize(800, 600))
+{
+	m_listCtrl = new wxListCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_ICON | wxLC_SINGLE_SEL | wxLC_MASK_ALIGN);
+
+	InitImageList();
+
+	m_listCtrl->SetBackgroundColour(wxColour(0, 0, 0));
+	m_listCtrl->SetTextColour(wxColour(255, 255, 255));
+
+	for (int i = 0; i < textures.size(); i++){
+		m_listCtrl->InsertItem(i, textures[i].name, i);
+		m_listCtrl->SetItemBackgroundColour(i, wxColour(0,0,255));
+	}
+
+	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+	sizer->Add(m_listCtrl, 1, wxEXPAND | wxALL, 10);
+	SetSizer(sizer);
+}
+
+void TextureBrowserDialog::InitImageList()
+{
+	m_imageList = new wxImageList(IMAGE_SIZE, IMAGE_SIZE, true);
+
+	for (int i = 0; i < textures.size(); i++){
+		wxImage img = textures[i].guiImage;
+
+		if (img.GetWidth() != IMAGE_SIZE || img.GetHeight() != IMAGE_SIZE)
+			img = img.Rescale(IMAGE_SIZE, IMAGE_SIZE);
+
+		m_imageList->Add(wxBitmap(img));
+	}
+
+	m_listCtrl->AssignImageList(m_imageList, wxIMAGE_LIST_NORMAL);
+}
+
 MapFrame::MapFrame(const wxString& title)
 : wxMDIParentFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(800, 600))
 {
@@ -86,9 +124,11 @@ MapFrame::MapFrame(const wxString& title)
 	objectPanel->SetSizer(sizer);
 	sizer->Fit(objectPanel);
 
-	wxTextCtrl* textCtrl1 = new wxTextCtrl(this, wxID_ANY, "Pane 1");
+	texturePanel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+	wxButton* browseButton = new wxButton(texturePanel, wxID_ANY, wxT("Browse..."), wxPoint(20, 20));
+	Connect(browseButton->GetId(), wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MapFrame::OnShowDialog));
 
-	m_mgr.AddPane(textCtrl1, wxAuiPaneInfo().Right().Caption("Texture group").BestSize(200,100).Position(0));
+	m_mgr.AddPane(texturePanel, wxAuiPaneInfo().Right().Caption("Texture group").BestSize(200, 100).Position(0));
 	m_mgr.AddPane(visgroupPanel, wxAuiPaneInfo().Right().Caption("VisGroups").BestSize(200,100).Position(1));
 	m_mgr.AddPane(objectPanel, wxAuiPaneInfo().Right().Caption("Objects").BestSize(200,100).Position(2));
 
@@ -137,6 +177,12 @@ MapFrame::MapFrame(const wxString& title)
 	tbar->AddTool(TOOL_PBLOCK, _("Paint Block"), paintBlock);
 	tbar->Realize();
 	SetToolBar(tbar);
+}
+
+void MapFrame::OnShowDialog(wxCommandEvent& event)
+{
+	TextureBrowserDialog dialog(this, wxT("Textures"));
+	dialog.ShowModal();
 }
 
 MapFrame::~MapFrame()
