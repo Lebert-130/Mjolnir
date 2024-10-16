@@ -33,6 +33,8 @@ wxMenuBar* menuBar;
 
 wxComboBox* comboBox;
 
+int currentTexture = 0;
+
 IMPLEMENT_APP(MjolnirApp)
 
 AboutDialog::AboutDialog(wxWindow* parent)
@@ -60,9 +62,22 @@ AboutDialog::AboutDialog(wxWindow* parent)
 }
 
 TextureBrowserDialog::TextureBrowserDialog(wxWindow* parent, const wxString& title)
-: wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxSize(800, 600))
+: wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxSize(900, 600))
 {
-	m_listCtrl = new wxListCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_ICON | wxLC_SINGLE_SEL | wxLC_MASK_ALIGN);
+	wxPanel* panel = new wxPanel(this, wxID_ANY);
+
+	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+	wxArrayString choices;
+	choices.Add("Option 1");
+	choices.Add("Option 2");
+	choices.Add("Option 3");
+	wxChoice* choiceControl = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, choices);
+	mainSizer->Add(choiceControl, 0, wxALL | wxEXPAND, 5);
+
+	m_listCtrl = new wxListCtrl(panel, wxID_ANY, wxDefaultPosition, wxSize(800, 400), wxLC_ICON | wxLC_SINGLE_SEL);
+	m_listCtrl->Connect(wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler(TextureBrowserDialog::OnItemSelected), nullptr, this);
+	mainSizer->Add(m_listCtrl, 1, wxEXPAND | wxALL, 10);
 
 	InitImageList();
 
@@ -74,9 +89,34 @@ TextureBrowserDialog::TextureBrowserDialog(wxWindow* parent, const wxString& tit
 		m_listCtrl->SetItemBackgroundColour(i, wxColour(0,0,255));
 	}
 
-	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
-	sizer->Add(m_listCtrl, 1, wxEXPAND | wxALL, 10);
-	SetSizer(sizer);
+	wxPanel* bottomPanel = new wxPanel(panel, wxID_ANY);
+	wxBoxSizer* bottomSizer = new wxBoxSizer(wxHORIZONTAL);
+
+	wxCheckBox* usedTexturesCheckbox = new wxCheckBox(bottomPanel, wxID_ANY, "Only used textures");
+	bottomSizer->Add(usedTexturesCheckbox, 0, wxALL, 5);
+
+	wxCheckBox* animateTexturesCheckbox = new wxCheckBox(bottomPanel, wxID_ANY, "Animate textures");
+	bottomSizer->Add(animateTexturesCheckbox, 0, wxALL, 5);
+
+	wxTextCtrl* filterTextbox = new wxTextCtrl(bottomPanel, wxID_ANY, "", wxDefaultPosition, wxSize(87, 20));
+	bottomSizer->Add(filterTextbox, 0, wxALL, 5);
+
+	wxButton* selectButton = new wxButton(bottomPanel, wxID_ANY, "Replace...");
+	bottomSizer->Add(selectButton, 0, wxALL, 5);
+
+	bottomPanel->SetSizer(bottomSizer);
+	mainSizer->Add(bottomPanel, 0, wxALL, 5);
+
+	panel->SetSizer(mainSizer);
+	mainSizer->Fit(this);
+}
+
+void TextureBrowserDialog::OnItemSelected(wxListEvent& event)
+{
+	int itemIndex = event.GetIndex();
+	currentTexture = itemIndex;
+
+	Close();
 }
 
 void TextureBrowserDialog::InitImageList()
@@ -241,7 +281,7 @@ MapDoc::MapDoc(wxMDIParentFrame* parent, const wxString& title)
 
 	timer = new wxTimer(this, 1337);
 	resetTimer = new wxTimer(this, 1338);
-	timer->Start(50);
+	timer->Start(30);
 
 	wxSplitterWindow *mainSplitter = new wxSplitterWindow(this);
 	m_leftSplitter = new wxSplitterWindow(mainSplitter);
@@ -300,6 +340,8 @@ MapDoc::~MapDoc()
 // And what just baffles me is that when I tried to look for a solution on the internet,
 // I came across with the OFFICIAL WIKI, telling me to MAKE A TIMER as alternative to EVT_KEY_DOWN...
 
+//TODO: Well... camera movement feels sluggish, maybe move all of the keyboard events to this timer at this point...
+//Pressing enter feels much more comfortable though, so maybe this is the answer to the problem.
 void MapDoc::OnTimer(wxTimerEvent& event)
 {
 	if(!enterKeyHandled){
@@ -313,7 +355,7 @@ void MapDoc::OnTimer(wxTimerEvent& event)
 			glCanvasSide->Refresh();
 			enterKeyHandled = true;
 
-			resetTimer->Start(100, wxTIMER_ONE_SHOT);
+			resetTimer->Start(60, wxTIMER_ONE_SHOT);
 		}
 	}
 }
@@ -563,8 +605,6 @@ void ObjectPropertiesSheetDialog::OnListBoxSelect(wxCommandEvent& event)
 
 		if (attr.description == selectedItem){
 			if (attr.choices.empty()){
-				//wxLogMessage("This is a wxTextCtrl attribute");
-
 				if (isChoice){
 					attributeChoices->Destroy();
 					attributeValues = new wxTextCtrl(objectPage, wxID_ANY, "", wxPoint(10, 10), wxSize(130, 20));
@@ -578,8 +618,6 @@ void ObjectPropertiesSheetDialog::OnListBoxSelect(wxCommandEvent& event)
 					attributeValues->SetValue(attr.defaultvalue);
 			}
 			else {
-				//wxLogMessage("This is a wxChoice attribute");
-
 				if (!isChoice){
 					attributeValues->Destroy();
 					wxArrayString choices;

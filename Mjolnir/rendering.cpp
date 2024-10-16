@@ -24,6 +24,7 @@
 #include "camera.h"
 #include "fgd.h"
 #include "map.h"
+#include "wad3.h"
 
 #define ROTATION_SPEED M_PI/180*0.2
 #define SPEED 1.8f
@@ -33,6 +34,7 @@
 
 std::vector<Entity> entities;
 std::vector<Brush> brushes;
+std::vector<GLuint> texturesGL;
 
 CCamera camera;
 
@@ -41,6 +43,32 @@ Vector2D selectionMin, selectionMax;
 bool selectionStarted;
 bool enterKeyCaptured;
 int lastRendermode;
+
+GLuint Image2Texture(unsigned int width, unsigned int height, unsigned char* data)
+{
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+
+	GLenum error;
+
+	if (textureID == 0 || (error = glGetError()) != GL_NO_ERROR) {
+		char message[64];
+		sprintf(message, "Error generating texture! OpenGL Error code: 0x%x.", error);
+		MessageBox(NULL, message, "OpenGL Error", MB_ICONERROR | MB_OK);
+		exit(-1);
+	}
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+	return textureID;
+}
 
 MapView3D::MapView3D(wxSplitterWindow* parent)
 : wxGLCanvas(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"))
@@ -62,44 +90,68 @@ MapView3D::~MapView3D()
 void CreateCube(Vector min, Vector max)
 {
 	glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f);
 		glVertex3f(min[0], min[1], max[2]);
+		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(min[0], max[1], max[2]);
+		glTexCoord2f(1.0f, 0.0f);
 		glVertex3f(max[0], max[1], max[2]);
+		glTexCoord2f(1.0f, 1.0f);
 		glVertex3f(max[0], min[1], max[2]);
 	glEnd();
 
 	glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(min[0], min[1], max[2]);
+		glTexCoord2f(1.0f, 0.0f);
 		glVertex3f(min[0], max[1], max[2]);
+		glTexCoord2f(1.0f, 1.0f);
 		glVertex3f(min[0], max[1], min[2]);
+		glTexCoord2f(0.0f, 1.0f);
 		glVertex3f(min[0], min[1], min[2]);
 	glEnd();
 
 	glBegin(GL_QUADS);
+		glTexCoord2f(1.0f, 0.0f);
 		glVertex3f(max[0], max[1], max[2]);
+		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(max[0], min[1], max[2]);
+		glTexCoord2f(0.0f, 1.0f);
 		glVertex3f(max[0], min[1], min[2]);
+		glTexCoord2f(1.0f, 1.0f);
 		glVertex3f(max[0], max[1], min[2]);
 	glEnd();
 
 	glBegin(GL_QUADS);
+		glTexCoord2f(1.0f, 0.0f);
 		glVertex3f(max[0], min[1], max[2]);
+		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(min[0], min[1], max[2]);
+		glTexCoord2f(0.0f, 1.0f);
 		glVertex3f(min[0], min[1], min[2]);
+		glTexCoord2f(1.0f, 1.0f);
 		glVertex3f(max[0], min[1], min[2]);
 	glEnd();
 
 	glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(min[0], max[1], max[2]);
+		glTexCoord2f(1.0f, 0.0f);
 		glVertex3f(max[0], max[1], max[2]);
+		glTexCoord2f(1.0f, 1.0f);
 		glVertex3f(max[0], max[1], min[2]);
+		glTexCoord2f(0.0f, 1.0f);
 		glVertex3f(min[0], max[1], min[2]);
 	glEnd();
 
 	glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f);
 		glVertex3f(min[0], min[1], min[2]);
+		glTexCoord2f(0.0f, 0.0f);
 		glVertex3f(min[0], max[1], min[2]);
+		glTexCoord2f(1.0f, 0.0f);
 		glVertex3f(max[0], max[1], min[2]);
+		glTexCoord2f(1.0f, 1.0f);
 		glVertex3f(max[0], min[1], min[2]);
 	glEnd();
 }
@@ -114,6 +166,7 @@ void RenderObjects()
 		glTranslatef(entity.pos[0], entity.pos[1], entity.pos[2]);
 		glColor3f(entity.pointclass.color[0], entity.pointclass.color[1], entity.pointclass.color[2]);
 
+		glBindTexture(GL_TEXTURE_2D, NULL);
 		CreateCube(entity.pointclass.sizeMin, entity.pointclass.sizeMax);
 
 		glColor3f(1.0f, 1.0f, 1.0f);
@@ -126,6 +179,7 @@ void RenderObjects()
 
 		glPushMatrix();
 
+		glBindTexture(GL_TEXTURE_2D, brush.texture);
 		CreateCube(brush.min, brush.max);
 
 		glPopMatrix();
@@ -210,6 +264,18 @@ void MapView3D::Render(wxPaintEvent& event)
 	int width, height;
 	GetClientSize(&width, &height);
 
+	//TODO: This is really slow, make sure to store a GLuint only when the user selects that texture,
+	//and not store everything at once.
+	if (!texturesLoaded){
+		for (int i = 0; i < textures.size(); i++){
+			wxImage img = textures[i].guiImage;
+			GLuint textureID = Image2Texture(img.GetWidth(), img.GetHeight(), img.GetData());
+			texturesGL.push_back(textureID);
+		}
+
+		texturesLoaded = true;
+	}
+
 	glViewport(0, 0, width, height);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -245,7 +311,11 @@ void MapView3D::Render(wxPaintEvent& event)
 
 	glColor3f(1.0f, 1.0f, 1.0f);
 
+	glEnable(GL_TEXTURE_2D);
+
 	RenderObjects();
+
+	glDisable(GL_TEXTURE_2D);
 
     glFlush();
     SwapBuffers();
@@ -383,13 +453,15 @@ void MapView2D::Render()
 			if(lastRendermode == VIEW_TOP){
 				tmp_brush.min = Vector(selectionMin[0], selectionMin[1], -8.0f);
 				tmp_brush.max = Vector(selectionMax[0], selectionMax[1], 0.0f);
-				brushes.push_back(tmp_brush);
+				tmp_brush.texture = texturesGL[currentTexture];
 			} else if(lastRendermode == VIEW_FRONT){
 				tmp_brush.min = Vector(-8.0f, selectionMin[0], selectionMin[1]);
 				tmp_brush.max = Vector(0.0f, selectionMax[0], selectionMax[1]);
+				tmp_brush.texture = texturesGL[currentTexture];
 			} else{
 				tmp_brush.min = Vector(selectionMin[0], -8.0f, selectionMin[1]);
 				tmp_brush.max = Vector(selectionMax[0], 0.0f, selectionMax[1]);
+				tmp_brush.texture = texturesGL[currentTexture];
 			}
 
 			brushes.push_back(tmp_brush);

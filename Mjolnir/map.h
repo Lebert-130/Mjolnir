@@ -9,6 +9,7 @@ typedef struct {
 typedef struct {
 	Vector min;
 	Vector max;
+	GLuint texture;
 } Brush;
 
 extern bool enterKeyCaptured;

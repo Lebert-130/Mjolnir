@@ -103,6 +103,7 @@ class TextureBrowserDialog : public wxDialog
 {
 public:
 	TextureBrowserDialog(wxWindow* parent, const wxString& title);
+	void OnItemSelected(wxListEvent& event);
 private:
 	void InitImageList();
 
@@ -141,6 +142,7 @@ public:
 	void Render(wxPaintEvent& event);
 private:
 	wxTimer* movementTimer;
+	bool texturesLoaded = false;
 	DECLARE_EVENT_TABLE();
 };
 
@@ -204,6 +206,7 @@ public:
 extern wxToolBar* tbar;
 extern wxChoice* entityChoice;
 extern MapFrame* frame;
+extern int currentTexture;
 
 DECLARE_APP(MjolnirApp)
 
