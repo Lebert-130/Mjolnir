@@ -1,5 +1,6 @@
 #pragma warning(disable : 4786)
 #include <vector>
+#include <unordered_map>
 
 #include "wx/wxprec.h"
 
@@ -28,13 +29,14 @@
 
 #define ROTATION_SPEED M_PI/180*0.2
 #define SPEED 1.8f
-#define ZOOM_SPEED 0.7f
+#define ZOOM_SPEED 1.0f
 #define GRID_SIZE 256.0f
 #define SCALE 8.0f
 
 std::vector<Entity> entities;
 std::vector<Brush> brushes;
-std::vector<GLuint> texturesGL;
+std::unordered_map<std::string, GLuint> texturesGL;
+GLuint currentTextureGL;
 
 CCamera camera;
 
@@ -68,6 +70,20 @@ GLuint Image2Texture(unsigned int width, unsigned int height, unsigned char* dat
 	gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
 
 	return textureID;
+}
+
+GLuint GetTexture(const int& index)
+{
+	Texture texture = textures[index];
+
+	if (!texturesGL.count(texture.name)){
+		GLuint tmp_gltexture = Image2Texture(texture.guiImage.GetWidth(), texture.guiImage.GetHeight(), texture.guiImage.GetData());
+		texturesGL[texture.name] = tmp_gltexture;
+		return texturesGL[texture.name];
+	}
+	else {
+		return texturesGL[texture.name];
+	}
 }
 
 MapView3D::MapView3D(wxSplitterWindow* parent)
@@ -264,17 +280,7 @@ void MapView3D::Render(wxPaintEvent& event)
 	int width, height;
 	GetClientSize(&width, &height);
 
-	//TODO: This is really slow, make sure to store a GLuint only when the user selects that texture,
-	//and not store everything at once.
-	if (!texturesLoaded){
-		for (int i = 0; i < textures.size(); i++){
-			wxImage img = textures[i].guiImage;
-			GLuint textureID = Image2Texture(img.GetWidth(), img.GetHeight(), img.GetData());
-			texturesGL.push_back(textureID);
-		}
-
-		texturesLoaded = true;
-	}
+	currentTextureGL = GetTexture(currentTexture);
 
 	glViewport(0, 0, width, height);
 
@@ -334,7 +340,6 @@ MapView2D::MapView2D(wxScrolledWindow* parent)
 {
 	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 	scrollWin->SetScrollbars(1, 1, 1000, 1000);
-	scrollWin->SetVirtualSize(1000, 1000);
 	SetSize(1000,1000);
 	enterKeyHandled = false;
 	readyToPlace = false;
@@ -367,8 +372,8 @@ void MapView2D::ConvertWindowToGridCoordinates(int mouseX, int mouseY, float& gr
 	float normalizedX = (mouseX / (float)canvasWidth);
     float normalizedY = (invertedMouseY / (float)canvasHeight);
 
-	gridX = Translate(normalizedX * canvasWidth, 0.0f, canvasWidth, -10.0f * zoom, 10.0f * zoom) / SCALE;
-    gridY = Translate(normalizedY * canvasHeight, 0.0f, canvasHeight, -10.0f * zoom, 10.0f * zoom) / SCALE;
+	gridX = Translate(normalizedX * canvasWidth, 0.0f, canvasWidth, offsetX - 10.0 * zoom, offsetX + 10.0 * zoom) / SCALE;
+	gridY = Translate(normalizedY * canvasHeight, 0.0f, canvasHeight, offsetY - 10.0 * zoom, offsetY + 10.0 * zoom) / SCALE;
 
 	gridX = floor(gridX) * SCALE;
 	gridY = floor(gridY) * SCALE;
@@ -394,7 +399,7 @@ void MapView2D::Render()
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(-10.0 * zoom, 10.0 * zoom, -10.0 * zoom, 10.0 * zoom, -640.0, 640.0);
+	glOrtho(offsetX - 10.0 * zoom, offsetX + 10.0 * zoom, offsetY - 10.0 * zoom, offsetY + 10.0 * zoom, -640.0, 640.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -453,15 +458,15 @@ void MapView2D::Render()
 			if(lastRendermode == VIEW_TOP){
 				tmp_brush.min = Vector(selectionMin[0], selectionMin[1], -8.0f);
 				tmp_brush.max = Vector(selectionMax[0], selectionMax[1], 0.0f);
-				tmp_brush.texture = texturesGL[currentTexture];
+				tmp_brush.texture = currentTextureGL;
 			} else if(lastRendermode == VIEW_FRONT){
 				tmp_brush.min = Vector(-8.0f, selectionMin[0], selectionMin[1]);
 				tmp_brush.max = Vector(0.0f, selectionMax[0], selectionMax[1]);
-				tmp_brush.texture = texturesGL[currentTexture];
+				tmp_brush.texture = currentTextureGL;
 			} else{
 				tmp_brush.min = Vector(selectionMin[0], -8.0f, selectionMin[1]);
 				tmp_brush.max = Vector(selectionMax[0], 0.0f, selectionMax[1]);
-				tmp_brush.texture = texturesGL[currentTexture];
+				tmp_brush.texture = currentTextureGL;
 			}
 
 			brushes.push_back(tmp_brush);
@@ -481,13 +486,22 @@ void MapView2D::Render()
 void MapView2D::OnMouseWheel(wxMouseEvent& event)
 {
 	int delta = event.GetWheelRotation();
-	zoom += delta > 0 ? -ZOOM_SPEED : ZOOM_SPEED;
-	if(zoom < 0.1f) zoom = 0.1f;
 
 	int mouseX = event.GetX();
 	int mouseY = event.GetY();
 
 	ConvertWindowToGridCoordinates(mouseX, mouseY, gridX, gridY);
+
+	float newZoom = zoom + (delta > 0 ? -ZOOM_SPEED : ZOOM_SPEED);
+    if (newZoom < 0.1f) newZoom = 0.1f;
+    if (newZoom > 50.0f) newZoom = 50.0f;
+
+	float zoomFactor = newZoom / zoom;
+
+	offsetX += (gridX - offsetX) * (1 - zoomFactor);
+	offsetY += (gridY - offsetY) * (1 - zoomFactor);
+
+	zoom = newZoom;
 
 	char coords[24];
 	sprintf(coords, "%.2f %.2f", gridX, gridY);

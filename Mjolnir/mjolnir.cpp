@@ -302,22 +302,25 @@ MapDoc::MapDoc(wxMDIParentFrame* parent, const wxString& title)
 	glCanvasSide->SetRenderMode(VIEW_SIDE);
 
 	m_leftSplitter->SetMinimumPaneSize(100);
-	m_leftSplitter->SetSashGravity(0.18);
+	m_leftSplitter->SetSashGravity(0.47);
 	m_leftSplitter->SplitHorizontally(glCanvasPersp, scrollFront);
 
 	m_rightSplitter->SetMinimumPaneSize(100);
-	m_rightSplitter->SetSashGravity(0.18);
+	m_rightSplitter->SetSashGravity(0.47);
 	m_rightSplitter->SplitHorizontally(scrollTop, scrollSide);
 
 	mainSplitter->SetMinimumPaneSize(100);
-	m_rightSplitter->SetSashGravity(0.18);
+	mainSplitter->SetSashGravity(0.47);
 	mainSplitter->SplitVertically(m_leftSplitter, m_rightSplitter);
 
-	wxSizer *sizerPersp = new wxBoxSizer(wxHORIZONTAL);
-	glCanvasPersp->SetSizer(sizerPersp);
+	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+	sizer->Add(mainSplitter, 1, wxEXPAND);
+	SetSizer(sizer);
 
     m_leftSplitter->Connect(wxEVT_COMMAND_SPLITTER_SASH_POS_CHANGED, wxSplitterEventHandler(MapDoc::OnLeftSplitterSashChanged), NULL, this);
     m_rightSplitter->Connect(wxEVT_COMMAND_SPLITTER_SASH_POS_CHANGED, wxSplitterEventHandler(MapDoc::OnRightSplitterSashChanged), NULL, this);
+
+	Layout();
 }
 
 MapDoc::~MapDoc()
@@ -369,6 +372,19 @@ void MapDoc::OnResetEnterKeyHandled(wxTimerEvent& event)
 	enterKeyCaptured = false;
 }
 
+void MapDoc::OnSize(wxSizeEvent& event)
+{
+	event.Skip();
+
+	int width, height;
+	GetClientSize(&width, &height);
+
+	m_leftSplitter->SetSashPosition(height / 2, true);
+	m_rightSplitter->SetSashPosition(height / 2, true);
+
+	Layout();
+}
+
 void MapDoc::OnLeftSplitterSashChanged(wxSplitterEvent& event)
 {
     int sashPosition = m_leftSplitter->GetSashPosition();
@@ -384,6 +400,7 @@ void MapDoc::OnRightSplitterSashChanged(wxSplitterEvent& event)
 BEGIN_EVENT_TABLE(MapDoc, wxMDIChildFrame)
 	EVT_TIMER(1337, MapDoc::OnTimer)
 	EVT_TIMER(1338, MapDoc::OnResetEnterKeyHandled)
+	EVT_SIZE(MapDoc::OnSize)
 END_EVENT_TABLE()
 
 OptionsPropertySheetDialog::OptionsPropertySheetDialog(wxWindow* parent)

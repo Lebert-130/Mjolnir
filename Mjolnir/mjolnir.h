@@ -142,7 +142,6 @@ public:
 	void Render(wxPaintEvent& event);
 private:
 	wxTimer* movementTimer;
-	bool texturesLoaded = false;
 	DECLARE_EVENT_TABLE();
 };
 
@@ -163,9 +162,12 @@ public:
 	void ConvertWindowToGridCoordinates(int mouseX, int mouseY, float& gridX, float& gridY);
 private:
 	wxScrolledWindow* scrollWin;
-	float zoom;
+	float zoom = 0.0f;
+	float offsetX = 0.0f;
+	float offsetY = 0.0f;
 	bool readyToPlace;
 	bool enterKeyHandled;
+	int lastMouseX, lastMouseY;
 	int rendermode;
 
 	DECLARE_EVENT_TABLE();
@@ -180,6 +182,7 @@ private:
 	void OnLeftSplitterSashChanged(wxSplitterEvent& event);
 	void OnRightSplitterSashChanged(wxSplitterEvent& event);
 	void OnTimer(wxTimerEvent& event);
+	void OnSize(wxSizeEvent& event);
 	void OnResetEnterKeyHandled(wxTimerEvent& event);
 
 	bool enterKeyHandled;
